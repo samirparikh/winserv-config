@@ -161,6 +161,7 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
+        ExecStartPre=/bin/bash -c 'until /usr/bin/tailscale status >/dev/null 2>&1; do sleep 2; done'
         ExecStart=/usr/bin/tailscale up --authkey=file:/etc/tailscale/authkey --hostname=winserv
         ExecStart=/bin/touch /var/lib/%N.stamp
         ExecStartPost=/bin/rm -f /etc/tailscale/authkey
