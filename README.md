@@ -80,10 +80,12 @@ curl -O https://raw.githubusercontent.com/samirparikh/winserv-config/refs/heads/
 Generate the Ignition file and install:
 ```
 # Generate Ignition with the secret substituted
-sed "s/__TAILSCALE_AUTHKEY__/$TAILSCALE_AUTHKEY/" winserv.bu | butane > /tmp/winserv.ign
+sed "s/__TAILSCALE_AUTHKEY__/$TAILSCALE_AUTHKEY/" winserv.bu > /tmp/winserv.bu
+podman pull quay.io/coreos/butane:release
+podman run --rm -i quay.io/coreos/butane:release --strict < /tmp/winserv.bu > /tmp/winserv.ign
 
 # Install Fedora CoreOS
-sudo coreos-installer install /dev/sda \
+sudo coreos-installer install /dev/nvme0n1 \
     --ignition-file /tmp/winserv.ign
 
 # Clean up the Ignition file containing the secret
