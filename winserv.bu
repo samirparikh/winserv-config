@@ -1,0 +1,121 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICJkPnoiDN0YMNlP//5kjLStlNyqU305GrG/PJGyI6wh siparikh@gmail.com
+      password_hash: $y$j9T$SJtncZAjzZEIZ872/KmO20$u5gQgmu5oqX1pXoHuBuW0wJ.LCJNyn5SGAER/TJEuq7
+    - name: jellyfin
+      uid: 1001
+storage:
+  filesystems:
+    - device: /dev/disk/by-label/storage
+      path: /var/srv/media
+      format: btrfs
+      wipe_filesystem: false
+      mount_options:
+        - subvol=media
+        - compress=zstd
+      with_mount_unit: true
+  directories:
+    - path: /var/home/jellyfin/.config
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+    - path: /var/home/jellyfin/.config/containers
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+    - path: /var/home/jellyfin/.config/containers/systemd
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+    - path: /var/home/jellyfin/.config/systemd
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+    - path: /var/home/jellyfin/.config/systemd/user
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+    - path: /var/home/jellyfin/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+  files:
+    - path: /etc/hostname
+      mode: 0644
+      contents:
+        inline: |
+          winserv
+    - path: /var/lib/systemd/linger/jellyfin
+      mode: 0644
+    - path: /var/home/jellyfin/.config/containers/systemd/jellyfin.container
+      mode: 0644
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+      contents:
+        inline: |
+          [Unit]
+          Description=Jellyfin Media Server
+          RequiresMountsFor=/srv/media
+
+          [Container]
+          ContainerName=jellyfin
+          Image=docker.io/jellyfin/jellyfin:latest
+          AutoUpdate=registry
+          PublishPort=8096:8096/tcp
+          PublishPort=7359:7359/udp
+          UserNS=keep-id
+          SecurityLabelDisable=true
+          Volume=jellyfin-config:/config
+          Volume=jellyfin-cache:/cache
+          Volume=/srv/media:/media:ro
+
+          [Service]
+          Restart=always
+          TimeoutStartSec=180
+
+          [Install]
+          WantedBy=default.target
+  links:
+    - path: /var/home/jellyfin/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+systemd:
+  units:
+    - name: jellyfin-firewall.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Open Jellyfin firewall ports
+        After=firewalld.service
+        Requires=firewalld.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=8096/tcp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=7359/udp
+        ExecStart=/usr/bin/firewall-cmd --reload
+
+        [Install]
+        WantedBy=multi-user.target
