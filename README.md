@@ -61,35 +61,17 @@ Funnel prerequisites: For funnel to work, you'll also need to enable it in your 
 
 ### Usage
 
-Set your auth key (get from https://login.tailscale.com/admin/settings/keys).
+Get your auth key (get from https://login.tailscale.com/admin/settings/keys).
 
-If they are in a directory on your main machine, run:
+Put it in a file called `tailscale_keyfile` and from the same directory, run:
 `python3 -m http.server 8000`
 
-Get the keyfile from the main machine onto the bare metal machine.  On the bare metal machine, run:
+From the bare metal machine, run:
 ```
-curl -v -O http://192.168.XXX.XXX:8000/tailscale_keyfile
-export TAILSCALE_AUTHKEY=$(cat tailscale_keyfile)
-```
-
-Grab the Butane file:
-```
-curl -O https://raw.githubusercontent.com/samirparikh/winserv-config/refs/heads/main/winserv.bu
-```
-
-Generate the Ignition file and install:
-```
-# Generate Ignition with the secret substituted
-sed "s/__TAILSCALE_AUTHKEY__/$TAILSCALE_AUTHKEY/" winserv.bu > /tmp/winserv.bu
-podman pull quay.io/coreos/butane:release
-podman run --rm -i quay.io/coreos/butane:release --strict < /tmp/winserv.bu > /tmp/winserv.ign
-
-# Install Fedora CoreOS
-sudo coreos-installer install /dev/nvme0n1 \
-    --ignition-file /tmp/winserv.ign
-
-# Clean up the Ignition file containing the secret
-rm /tmp/winserv.ign
+git clone https://github.com/samirparikh/winserv-config
+cd winserv-config
+chmod +x install.sh
+./install.sh
 ```
 
 ### What Happens on First Boot
