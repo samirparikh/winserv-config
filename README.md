@@ -72,6 +72,11 @@ curl -v -O http://192.168.XXX.XXX:8000/tailscale_keyfile
 export TAILSCALE_AUTHKEY=$(cat tailscale_keyfile)
 ```
 
+Grab the Butane file:
+```
+curl -O https://raw.githubusercontent.com/samirparikh/winserv-config/refs/heads/main/winserv.bu
+```
+
 Generate the Ignition file and install:
 ```
 # Generate Ignition with the secret substituted
