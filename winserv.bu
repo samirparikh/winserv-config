@@ -107,6 +107,23 @@ storage:
         name: jellyfin
 systemd:
   units:
+    - name: media-permissions.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Set media directory permissions
+        After=var-srv-media.mount
+        Requires=var-srv-media.mount
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/chown core:jellyfin /var/srv/media
+        ExecStart=/usr/bin/chmod 0755 /var/srv/media
+
+        [Install]
+        WantedBy=multi-user.target
+
     - name: jellyfin-firewall.service
       enabled: true
       contents: |
