@@ -96,7 +96,7 @@ storage:
     - path: /etc/tailscale/authkey
       mode: 0600
       contents:
-        inline: |
+        inline: |-
           __TAILSCALE_AUTHKEY__
   links:
     - path: /var/home/jellyfin/.config/systemd/user/timers.target.wants/podman-auto-update.timer
@@ -154,14 +154,14 @@ systemd:
         After=network-online.target
         After=rpm-ostree-install-tailscale.service
         After=tailscaled.service
-        Requires=tailscaled.service
+        Wants=tailscaled.service
         ConditionPathExists=/etc/tailscale/authkey
         ConditionPathExists=!/var/lib/%N.stamp
 
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStartPre=/bin/bash -c 'until /usr/bin/tailscale status >/dev/null 2>&1; do sleep 2; done'
+        ExecStartPre=/bin/bash -c 'until [ -S /var/run/tailscale/tailscaled.sock ]; do sleep 2; done'
         ExecStart=/usr/bin/tailscale up --authkey=file:/etc/tailscale/authkey --hostname=winserv
         ExecStart=/bin/touch /var/lib/%N.stamp
         ExecStartPost=/bin/rm -f /etc/tailscale/authkey
@@ -176,7 +176,7 @@ systemd:
         Description=Tailscale Funnel for Jellyfin
         After=tailscale-auth.service
         After=tailscaled.service
-        Requires=tailscaled.service
+        Wants=tailscaled.service
 
         [Service]
         Type=oneshot
