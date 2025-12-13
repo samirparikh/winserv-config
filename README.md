@@ -1,6 +1,6 @@
-# Fedora CoreOS Jellyfin Server with Tailscale Funnel
+# Fedora CoreOS Jellyfin Server with Tailscale Funnel and AdGuard Home
 
-Automated deployment of a Jellyfin media server on Fedora CoreOS, exposed to the internet via Tailscale Funnel.
+Automated deployment of a Jellyfin media server and AdGuard Home DNS server on Fedora CoreOS, with Jellyfin exposed to the internet via Tailscale Funnel.
 
 ## Prerequisites
 
@@ -24,6 +24,17 @@ Automated deployment of a Jellyfin media server on Fedora CoreOS, exposed to the
    chmod +x install.sh
    ./install.sh
    ```
+
+## Services
+
+After provisioning, the following services are available:
+
+| Service | Access | Notes |
+|---------|--------|-------|
+| Jellyfin | `http://winserv:8096` (Tailnet) or via Funnel externally | Rootless, runs as jellyfin user |
+| AdGuard Home setup | `http://winserv:3000` (first run only) | Initial configuration wizard |
+| AdGuard Home admin | `http://winserv:80` (after setup) | Rootful, runs as root |
+| AdGuard Home DNS | `winserv:53` | Point your clients/router here |
 
 ## Configuration
 
@@ -82,7 +93,11 @@ The Butane configuration expects a drive labeled `storage` with a `media` subvol
 1. **rpm-ostree-install-tailscale.service** — Installs Tailscale via rpm-ostree and starts tailscaled
 2. **tailscale-auth.service** — Waits for tailscaled socket, authenticates with the auth key, then deletes the key file
 3. **tailscale-funnel-jellyfin.service** — Waits for Tailscale to come online, then starts the funnel on port 8096
-4. **jellyfin.container** — Runs as a rootless Podman container under the `jellyfin` user
+4. **disable-resolved-stub.service** — Restarts systemd-resolved to disable the stub listener on port 53
+5. **jellyfin-firewall.service** — Opens firewall ports 8096/tcp and 7359/udp for Jellyfin
+6. **adguardhome-firewall.service** — Opens firewall ports for AdGuard Home (53, 80, 853, 3000, 784, 8853, 5443)
+7. **jellyfin.container** — Runs as a rootless Podman container under the `jellyfin` user
+8. **adguardhome.container** — Runs as a rootful Podman container
 
 ## Architecture Notes
 
@@ -94,20 +109,36 @@ The Butane configuration expects a drive labeled `storage` with a `media` subvol
 
 **Jellyfin user**: Runs as UID 1001 with lingering enabled, allowing the rootless container to start at boot without a login session.
 
+**systemd-resolved and port 53**: By default, systemd-resolved binds a stub listener to port 53, which conflicts with AdGuard Home. The configuration disables this via `/etc/systemd/resolved.conf.d/disable-stub.conf` and restarts resolved before AdGuard Home starts. The host system uses external DNS directly rather than AdGuard Home for its own lookups.
+
+**Container auto-updates**: Both rootless (jellyfin user) and rootful containers are configured to auto-update via Podman's `podman-auto-update.timer`. The timer checks daily for new images and restarts containers when updates are available.
+
+**AdGuard Home data**: Configuration and working data are stored in `/var/srv/adguardhome/conf` and `/var/srv/adguardhome/work` respectively, persisting across container restarts.
+
 ## Troubleshooting
 
 ### Check service status
 ```bash
+# Tailscale services
 systemctl status rpm-ostree-install-tailscale.service
 systemctl status tailscale-auth.service
 systemctl status tailscale-funnel-jellyfin.service
+
+# Jellyfin (rootless)
 sudo -u jellyfin systemctl --user status jellyfin.service
+
+# AdGuard Home (rootful)
+systemctl status adguardhome.service
+
+# systemd-resolved stub disable
+systemctl status disable-resolved-stub.service
 ```
 
 ### View service logs
 ```bash
 sudo journalctl -u tailscale-auth.service --no-pager
 sudo journalctl -u tailscaled.service --no-pager
+sudo journalctl -u adguardhome.service --no-pager
 ```
 
 ### "invalid key" error
@@ -132,6 +163,29 @@ tailscale funnel status
 ```
 
 Check that Funnel is enabled in your Tailscale ACL policy and that the node has the appropriate tag.
+
+### AdGuard Home fails to start with port 53 error
+Verify that systemd-resolved released port 53:
+```bash
+ss -tulnp | grep :53
+systemctl status disable-resolved-stub.service
+cat /etc/systemd/resolved.conf.d/disable-stub.conf
+```
+
+If port 53 is still bound by systemd-resolved, restart it manually:
+```bash
+sudo systemctl restart systemd-resolved
+sudo systemctl restart adguardhome.service
+```
+
+### Check container auto-update status
+```bash
+# Rootful containers
+sudo podman auto-update --dry-run
+
+# Rootless containers (as jellyfin user)
+sudo -u jellyfin podman auto-update --dry-run
+```
 
 ### Duplicate machine names in Tailscale
 After reinstalling, you may see both `winserv` (offline) and `winserv-1` in your tailnet. Delete the old entry from the [Tailscale admin console](https://login.tailscale.com/admin/machines) and optionally rename the new one.
