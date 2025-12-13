@@ -125,7 +125,7 @@ systemctl status tailscale-auth.service
 systemctl status tailscale-funnel-jellyfin.service
 
 # Jellyfin (rootless)
-sudo -u jellyfin systemctl --user status jellyfin.service
+sudo systemctl --machine=jellyfin@.host --user status jellyfin.service
 
 # AdGuard Home (rootful)
 systemctl status adguardhome.service
