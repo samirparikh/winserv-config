@@ -29,12 +29,12 @@ Automated deployment of a Jellyfin media server and AdGuard Home DNS server on F
 
 After provisioning, the following services are available:
 
-| Service | Access | Notes |
-|---------|--------|-------|
-| Jellyfin | `http://winserv:8096` (Tailnet) or via Funnel externally | Rootless, runs as jellyfin user |
-| AdGuard Home setup | `http://winserv:3000` (first run only) | Initial configuration wizard |
-| AdGuard Home admin | `http://winserv:80` (after setup) | Rootful, runs as root |
-| AdGuard Home DNS | `winserv:53` | Point your clients/router here |
+| Service | Local Network (LAN) | Tailnet (traveling) | Notes |
+|---------|---------------------|---------------------|-------|
+| Jellyfin | `http://192.168.1.229:8096`<br>`http://winserv:8096` | `http://winserv:8096`<br>Via Tailscale Funnel (public) | Rootless, runs as jellyfin user |
+| AdGuard Home setup | `http://192.168.1.229:3000`<br>`http://winserv:3000` | `http://winserv:3000` | Initial configuration wizard (first run only) |
+| AdGuard Home admin | `http://192.168.1.229`<br>`http://winserv` | `http://winserv` | Rootful, runs as root |
+| AdGuard Home DNS | `192.168.1.229:53` | `winserv:53` (Tailscale Magic DNS) | Point your router to LAN IP, devices to Tailnet hostname when traveling |
 
 ## Configuration
 
