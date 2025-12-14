@@ -167,6 +167,24 @@ storage:
       contents:
         inline: |-
           __TAILSCALE_AUTHKEY__
+    # Core user bash profile
+    - path: /var/home/core/.bash_profile
+      mode: 0644
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          # Source bashrc if it exists
+          if [ -f ~/.bashrc ]; then
+            . ~/.bashrc
+          fi
+
+          # Set console blanking and powerdown
+          if [[ -t 1 && $(tty) == /dev/tty* ]]; then
+            setterm --blank 10 --powerdown 10
+          fi
   links:
     # Rootless podman auto-update timer for jellyfin user
     - path: /var/home/jellyfin/.config/systemd/user/timers.target.wants/podman-auto-update.timer
