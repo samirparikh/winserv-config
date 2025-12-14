@@ -64,6 +64,24 @@ storage:
     - path: /var/srv/adguardhome/conf
       mode: 0755
   files:
+    # Static IP configuration
+    - path: /etc/NetworkManager/system-connections/static-eth.nmconnection
+      mode: 0600
+      contents:
+        inline: |
+          [connection]
+          id=static-eth
+          type=ethernet
+          autoconnect=true
+          autoconnect-priority=100
+
+          [ipv4]
+          method=manual
+          address1=192.168.1.229/24,192.168.1.1
+          dns=1.1.1.1;8.8.8.8;
+
+          [ipv6]
+          method=auto
     - path: /etc/hostname
       mode: 0644
       contents:
@@ -276,7 +294,7 @@ systemd:
         Type=oneshot
         RemainAfterExit=yes
         ExecStartPre=/bin/bash -c 'until [ -S /var/run/tailscale/tailscaled.sock ]; do sleep 2; done'
-        ExecStart=/usr/bin/tailscale up --authkey=file:/etc/tailscale/authkey --hostname=winserv
+        ExecStart=/usr/bin/tailscale up --authkey=file:/etc/tailscale/authkey --hostname=winserv --ssh
         ExecStart=/bin/touch /var/lib/%N.stamp
         ExecStartPost=/bin/rm -f /etc/tailscale/authkey
 
