@@ -26,6 +26,14 @@ storage:
         - subvol=adguardhome
         - compress=zstd
       with_mount_unit: true
+    - device: /dev/disk/by-label/storage
+      path: /var/srv/jellyfin
+      format: btrfs
+      wipe_filesystem: false
+      mount_options:
+        - subvol=jellyfin
+        - compress=zstd
+      with_mount_unit: true
   directories:
     # Jellyfin user directories
     - path: /var/home/jellyfin/.config
@@ -64,6 +72,11 @@ storage:
         name: jellyfin
       group:
         name: jellyfin
+    # Jellyfin persistent storage (on external storage subvolume)
+    - path: /var/srv/jellyfin/config
+      mode: 0755
+    - path: /var/srv/jellyfin/cache
+      mode: 0755
     # AdGuard Home directories (on external storage subvolume)
     - path: /var/srv/adguardhome/work
       mode: 0700
@@ -114,6 +127,7 @@ storage:
           [Unit]
           Description=Jellyfin Media Server
           RequiresMountsFor=/srv/media
+          RequiresMountsFor=/srv/jellyfin
 
           [Container]
           ContainerName=jellyfin
@@ -123,8 +137,8 @@ storage:
           PublishPort=7359:7359/udp
           UserNS=keep-id
           SecurityLabelDisable=true
-          Volume=jellyfin-config:/config
-          Volume=jellyfin-cache:/cache
+          Volume=/srv/jellyfin/config:/config
+          Volume=/srv/jellyfin/cache:/cache
           Volume=/srv/media:/media:ro
 
           [Service]
@@ -219,6 +233,23 @@ systemd:
         RemainAfterExit=yes
         ExecStart=/usr/bin/chown core:jellyfin /var/srv/media
         ExecStart=/usr/bin/chmod 0755 /var/srv/media
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: jellyfin-storage-permissions.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Set Jellyfin storage directory permissions
+        After=var-srv-jellyfin.mount
+        Requires=var-srv-jellyfin.mount
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/chown -R jellyfin:jellyfin /var/srv/jellyfin
+        ExecStart=/usr/bin/chmod 0755 /var/srv/jellyfin
 
         [Install]
         WantedBy=multi-user.target
