@@ -18,6 +18,14 @@ storage:
         - subvol=media
         - compress=zstd
       with_mount_unit: true
+    - device: /dev/disk/by-label/storage
+      path: /var/srv/adguardhome
+      format: btrfs
+      wipe_filesystem: false
+      mount_options:
+        - subvol=adguardhome
+        - compress=zstd
+      with_mount_unit: true
   directories:
     # Jellyfin user directories
     - path: /var/home/jellyfin/.config
@@ -56,9 +64,7 @@ storage:
         name: jellyfin
       group:
         name: jellyfin
-    # AdGuard Home directories
-    - path: /var/srv/adguardhome
-      mode: 0755
+    # AdGuard Home directories (on external storage subvolume)
     - path: /var/srv/adguardhome/work
       mode: 0700
     - path: /var/srv/adguardhome/conf
@@ -136,8 +142,10 @@ storage:
           Description=AdGuard Home
           After=network-online.target
           After=disable-resolved-stub.service
+          After=var-srv-adguardhome.mount
           Wants=network-online.target
           Requires=disable-resolved-stub.service
+          Requires=var-srv-adguardhome.mount
 
           [Container]
           Image=docker.io/adguard/adguardhome
