@@ -16,7 +16,7 @@ storage:
       wipe_filesystem: false
       mount_options:
         - subvol=media
-        - compress=zstd
+        - compress=no
       with_mount_unit: true
     - device: /dev/disk/by-label/storage
       path: /var/srv/adguardhome
