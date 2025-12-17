@@ -53,24 +53,14 @@ storage:
         name: jellyfin
       group:
         name: jellyfin
-    # Mount point directories (will be created by systemd, but we ensure they exist)
+    # Mount point directories (parent dirs only - subdirs created by services after mount)
     - path: /var/srv/media
       mode: 0755
     - path: /var/srv/jellyfin
       mode: 0755
     - path: /var/srv/adguardhome
       mode: 0755
-    # Jellyfin persistent storage (on external storage subvolume)
-    - path: /var/srv/jellyfin/config
-      mode: 0755
-    - path: /var/srv/jellyfin/cache
-      mode: 0755
-    # AdGuard Home directories (on external storage subvolume)
-    - path: /var/srv/adguardhome/work
-      mode: 0700
-    - path: /var/srv/adguardhome/conf
-      mode: 0755
-    # Homepage directories (root-owned)
+    # Homepage directories (root-owned, not on btrfs subvolume)
     - path: /var/srv/homepage
       mode: 0755
       user:
@@ -157,10 +147,10 @@ storage:
           Description=AdGuard Home
           After=network-online.target
           After=disable-resolved-stub.service
-          After=var-srv-adguardhome.mount
+          After=adguardhome-dirs.service
           Wants=network-online.target
           Requires=disable-resolved-stub.service
-          Requires=var-srv-adguardhome.mount
+          Requires=adguardhome-dirs.service
 
           [Container]
           Image=docker.io/adguard/adguardhome
@@ -327,17 +317,39 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
+    - name: adguardhome-dirs.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Create AdGuard Home directories on storage
+        After=var-srv-adguardhome.mount
+        Requires=var-srv-adguardhome.mount
+        Before=adguardhome.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir -p /var/srv/adguardhome/conf
+        ExecStart=/usr/bin/mkdir -p /var/srv/adguardhome/work
+        ExecStart=/usr/bin/chmod 755 /var/srv/adguardhome/conf
+        ExecStart=/usr/bin/chmod 700 /var/srv/adguardhome/work
+
+        [Install]
+        WantedBy=multi-user.target
+
     - name: jellyfin-storage-permissions.service
       enabled: true
       contents: |
         [Unit]
-        Description=Set Jellyfin storage directory permissions
+        Description=Create and set Jellyfin storage directory permissions
         After=var-srv-jellyfin.mount
         Requires=var-srv-jellyfin.mount
 
         [Service]
         Type=oneshot
         RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir -p /var/srv/jellyfin/config
+        ExecStart=/usr/bin/mkdir -p /var/srv/jellyfin/cache
         ExecStart=/usr/bin/chown -R jellyfin:jellyfin /var/srv/jellyfin
         ExecStart=/usr/bin/chmod 0755 /var/srv/jellyfin
 
