@@ -72,6 +72,12 @@ storage:
         name: jellyfin
       group:
         name: jellyfin
+    - path: /var/home/jellyfin/.config/systemd/user/sockets.target.wants
+      mode: 0755
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
     # Jellyfin persistent storage (on external storage subvolume)
     - path: /var/srv/jellyfin/config
       mode: 0755
@@ -82,11 +88,19 @@ storage:
       mode: 0700
     - path: /var/srv/adguardhome/conf
       mode: 0755
-    # Homepage directories
+    # Homepage directories (root-owned)
     - path: /var/srv/homepage
       mode: 0755
+      user:
+        name: root
+      group:
+        name: root
     - path: /var/srv/homepage/config
       mode: 0755
+      user:
+        name: root
+      group:
+        name: root
   files:
     # Static IP configuration
     - path: /etc/NetworkManager/system-connections/static-eth.nmconnection
@@ -196,22 +210,18 @@ storage:
           [Unit]
           Description=Homepage Dashboard
           After=network-online.target
-          After=podman.socket
           Wants=network-online.target
-          Requires=podman.socket
 
           [Container]
           Image=ghcr.io/gethomepage/homepage:latest
           ContainerName=homepage
           AutoUpdate=registry
           PublishPort=3001:3000
-
+          SecurityLabelDisable=true
           Volume=/var/srv/homepage/config:/app/config:Z
-          Volume=/run/podman/podman.sock:/var/run/docker.sock:ro
-
+          Volume=/run/podman/podman.sock:/var/run/docker.sock
+          Volume=/run/user/1001/podman/podman.sock:/var/run/jellyfin-podman.sock
           Environment=HOMEPAGE_ALLOWED_HOSTS=winserv:3001,winserv,192.168.1.229,winserv.terrier-duck.ts.net:3001,winserv.terrier-duck.ts.net
-          Environment=PUID=1000
-          Environment=PGID=1000
 
           [Service]
           Restart=always
@@ -246,6 +256,13 @@ storage:
     # Rootless podman auto-update timer for jellyfin user
     - path: /var/home/jellyfin/.config/systemd/user/timers.target.wants/podman-auto-update.timer
       target: /usr/lib/systemd/user/podman-auto-update.timer
+      user:
+        name: jellyfin
+      group:
+        name: jellyfin
+    # Rootless podman socket for jellyfin user (for Homepage integration)
+    - path: /var/home/jellyfin/.config/systemd/user/sockets.target.wants/podman.socket
+      target: /usr/lib/systemd/user/podman.socket
       user:
         name: jellyfin
       group:
