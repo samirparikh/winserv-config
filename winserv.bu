@@ -9,31 +9,6 @@ passwd:
     - name: jellyfin
       uid: 1001
 storage:
-  filesystems:
-    - device: /dev/disk/by-label/storage
-      path: /var/srv/media
-      format: btrfs
-      wipe_filesystem: false
-      mount_options:
-        - subvol=media
-        - compress=no
-      with_mount_unit: true
-    - device: /dev/disk/by-label/storage
-      path: /var/srv/adguardhome
-      format: btrfs
-      wipe_filesystem: false
-      mount_options:
-        - subvol=adguardhome
-        - compress=zstd
-      with_mount_unit: true
-    - device: /dev/disk/by-label/storage
-      path: /var/srv/jellyfin
-      format: btrfs
-      wipe_filesystem: false
-      mount_options:
-        - subvol=jellyfin
-        - compress=zstd
-      with_mount_unit: true
   directories:
     # Jellyfin user directories
     - path: /var/home/jellyfin/.config
@@ -78,6 +53,13 @@ storage:
         name: jellyfin
       group:
         name: jellyfin
+    # Mount point directories (will be created by systemd, but we ensure they exist)
+    - path: /var/srv/media
+      mode: 0755
+    - path: /var/srv/jellyfin
+      mode: 0755
+    - path: /var/srv/adguardhome
+      mode: 0755
     # Jellyfin persistent storage (on external storage subvolume)
     - path: /var/srv/jellyfin/config
       mode: 0755
@@ -275,6 +257,58 @@ storage:
       target: /usr/lib/systemd/system/podman.socket
 systemd:
   units:
+    # Systemd mount units for btrfs subvolumes
+    - name: var-srv-media.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount media subvolume
+        After=local-fs-pre.target
+        Before=local-fs.target
+
+        [Mount]
+        What=/dev/disk/by-label/storage
+        Where=/var/srv/media
+        Type=btrfs
+        Options=subvol=media,compress=no
+
+        [Install]
+        WantedBy=local-fs.target
+
+    - name: var-srv-adguardhome.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount adguardhome subvolume
+        After=local-fs-pre.target
+        Before=local-fs.target
+
+        [Mount]
+        What=/dev/disk/by-label/storage
+        Where=/var/srv/adguardhome
+        Type=btrfs
+        Options=subvol=adguardhome,compress=zstd
+
+        [Install]
+        WantedBy=local-fs.target
+
+    - name: var-srv-jellyfin.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount jellyfin subvolume
+        After=local-fs-pre.target
+        Before=local-fs.target
+
+        [Mount]
+        What=/dev/disk/by-label/storage
+        Where=/var/srv/jellyfin
+        Type=btrfs
+        Options=subvol=jellyfin,compress=zstd
+
+        [Install]
+        WantedBy=local-fs.target
+
     - name: media-permissions.service
       enabled: true
       contents: |
