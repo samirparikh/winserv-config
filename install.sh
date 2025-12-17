@@ -79,6 +79,9 @@ podman run --rm -i quay.io/coreos/butane:release --strict \
 
 # Step 6: Confirm before installing Fedora CoreOS
 if confirm "About to INSTALL Fedora CoreOS to ${TARGET_DISK}. THIS WILL ERASE THE DISK. Continue?"; then
+  log "Wiping existing partition table"
+  sudo wipefs --all "${TARGET_DISK}"
+
   log "Running coreos-installer"
   sudo coreos-installer install "${TARGET_DISK}" --ignition-file /tmp/winserv.ign
 else
