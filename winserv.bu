@@ -219,6 +219,7 @@ storage:
     # Core user bash profile
     - path: /var/home/core/.bash_profile
       mode: 0644
+      overwrite: true
       user:
         name: core
       group:
