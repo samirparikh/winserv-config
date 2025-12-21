@@ -244,7 +244,7 @@ storage:
                     key: {{HOMEPAGE_VAR_JELLYFIN_API_KEY}}
                     enableBlocks: true
                     enableNowPlaying: true
-
+          
           - Services:
               - AdGuard Home:
                   icon: adguard-home.png

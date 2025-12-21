@@ -1,0 +1,5 @@
+---
+docker:
+  host: /var/run/docker.sock
+jellyfin-podman:
+  host: /var/run/jellyfin-podman.sock

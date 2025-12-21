@@ -131,7 +131,56 @@ log "Assembling final butane file..."
     grep -v "^  units:" "${TEMP_DIR}/systemd.yaml"
   fi
 
-} > "${OUTPUT_FILE}"
+} > "${OUTPUT_FILE}.tmp"
+
+log "Injecting external YAML configuration files..."
+
+# Read YAML files and inject them into the butane configuration
+HOMEPAGE_SETTINGS=$(cat "${SCRIPT_DIR}/homepage/settings.yaml")
+HOMEPAGE_SERVICES=$(cat "${SCRIPT_DIR}/homepage/services.yaml")
+HOMEPAGE_WIDGETS=$(cat "${SCRIPT_DIR}/homepage/widgets.yaml")
+HOMEPAGE_BOOKMARKS=$(cat "${SCRIPT_DIR}/homepage/bookmarks.yaml")
+HOMEPAGE_DOCKER=$(cat "${SCRIPT_DIR}/homepage/docker.yaml")
+
+# Use awk to replace placeholders with indented content
+awk -v settings="$HOMEPAGE_SETTINGS" \
+    -v services="$HOMEPAGE_SERVICES" \
+    -v widgets="$HOMEPAGE_WIDGETS" \
+    -v bookmarks="$HOMEPAGE_BOOKMARKS" \
+    -v docker="$HOMEPAGE_DOCKER" '
+{
+  if ($0 ~ /__HOMEPAGE_SETTINGS_YAML__/) {
+    # Add 10 spaces of indentation for each line
+    n = split(settings, lines, "\n")
+    for (i = 1; i <= n; i++) {
+      print "          " lines[i]
+    }
+  } else if ($0 ~ /__HOMEPAGE_SERVICES_YAML__/) {
+    n = split(services, lines, "\n")
+    for (i = 1; i <= n; i++) {
+      print "          " lines[i]
+    }
+  } else if ($0 ~ /__HOMEPAGE_WIDGETS_YAML__/) {
+    n = split(widgets, lines, "\n")
+    for (i = 1; i <= n; i++) {
+      print "          " lines[i]
+    }
+  } else if ($0 ~ /__HOMEPAGE_BOOKMARKS_YAML__/) {
+    n = split(bookmarks, lines, "\n")
+    for (i = 1; i <= n; i++) {
+      print "          " lines[i]
+    }
+  } else if ($0 ~ /__HOMEPAGE_DOCKER_YAML__/) {
+    n = split(docker, lines, "\n")
+    for (i = 1; i <= n; i++) {
+      print "          " lines[i]
+    }
+  } else {
+    print
+  }
+}' "${OUTPUT_FILE}.tmp" > "${OUTPUT_FILE}"
+
+rm "${OUTPUT_FILE}.tmp"
 
 log "Build complete!"
 log "Output: ${OUTPUT_FILE}"

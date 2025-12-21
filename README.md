@@ -205,8 +205,17 @@ fcos/
 │   ├── containers/
 │   │   ├── jellyfin.bu      # Jellyfin container and services
 │   │   ├── adguardhome.bu   # AdGuard Home container and services
-│   │   └── homepage.bu      # Homepage dashboard with YAML configs
+│   │   └── homepage.bu      # Homepage dashboard (references YAML configs)
 │   └── misc.bu              # Miscellaneous configs (bash_profile, etc.)
+├── homepage/                # Homepage dashboard YAML configurations
+│   ├── settings.yaml        # Dashboard theme, title, and layout
+│   ├── services.yaml        # Service widgets (Jellyfin, AdGuard, etc.)
+│   ├── widgets.yaml         # System widgets (resources, search)
+│   ├── bookmarks.yaml       # Quick links and bookmarks
+│   └── docker.yaml          # Docker/Podman socket configuration
+├── jellyfin/                # Jellyfin-specific configs (currently empty)
+├── adguardhome/             # AdGuard Home configs (currently empty)
+├── tailscale/               # Tailscale configs (currently empty)
 ├── build.sh                 # Script to merge modular butane files
 └── homelab.bu               # Generated combined butane file
 ```
@@ -225,10 +234,24 @@ fcos/
 
 To modify the configuration:
 
-1. Edit the relevant file in `fcos/butane/` or `fcos/butane/containers/`
+1. Edit the relevant file:
+   - **Butane configs**: `fcos/butane/` or `fcos/butane/containers/`
+   - **Homepage dashboard**: Edit YAML files in `fcos/homepage/`
+   - **Other services**: Add configs to respective directories (`fcos/jellyfin/`, etc.)
 2. Run `./install.sh` when ready to install
 
-The `install.sh` script automatically runs `build.sh` to merge all modular files before installation.
+The `install.sh` script automatically runs `build.sh` to merge all modular files and inject YAML configs before installation.
+
+### Editing Homepage Configuration
+
+Homepage dashboard settings are stored as separate YAML files in `fcos/homepage/`:
+- **settings.yaml**: Dashboard theme, title, and layout
+- **services.yaml**: Service widgets and integrations (Jellyfin, AdGuard Home)
+- **widgets.yaml**: System resource widgets and search
+- **bookmarks.yaml**: Quick links to external services
+- **docker.yaml**: Container socket configurations
+
+Simply edit these files directly - they'll be automatically injected into the butane configuration during build.
 
 ### Testing Changes Without Installing
 

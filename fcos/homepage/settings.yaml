@@ -1,0 +1,13 @@
+---
+title: Winserv Dashboard
+theme: dark
+color: slate
+headerStyle: boxed
+target: _blank
+layout:
+  Media:
+    style: row
+    columns: 2
+  Services:
+    style: row
+    columns: 2

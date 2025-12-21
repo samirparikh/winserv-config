@@ -1,0 +1,27 @@
+---
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: http://192.168.1.229:8096
+        description: Media Server
+        container: jellyfin
+        server: jellyfin-podman
+        widget:
+          type: jellyfin
+          url: http://192.168.1.229:8096
+          key: {{HOMEPAGE_VAR_JELLYFIN_API_KEY}}
+          enableBlocks: true
+          enableNowPlaying: true
+
+- Services:
+    - AdGuard Home:
+        icon: adguard-home.png
+        href: http://192.168.1.229
+        description: DNS & Ad Blocking
+        container: adguardhome
+        server: docker
+        widget:
+          type: adguard
+          url: http://192.168.1.229
+          username: {{HOMEPAGE_VAR_ADGUARD_USERNAME}}
+          password: {{HOMEPAGE_VAR_ADGUARD_PASSWORD}}

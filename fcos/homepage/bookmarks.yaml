@@ -1,0 +1,8 @@
+---
+- Network:
+    - Router:
+        - icon: router.png
+          href: http://192.168.1.1
+    - Tailscale:
+        - icon: tailscale.png
+          href: https://login.tailscale.com/admin/machines
