@@ -1,0 +1,71 @@
+storage:
+  files:
+    # Tailscale auth key
+    - path: /etc/tailscale/authkey
+      mode: 0600
+      contents:
+        inline: |-
+          __TAILSCALE_AUTHKEY__
+systemd:
+  units:
+    - name: rpm-ostree-install-tailscale.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Tailscale
+        Wants=network-online.target
+        After=network-online.target
+        Before=zincati.service
+        ConditionPathExists=!/var/lib/%N.stamp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install --apply-live --allow-inactive tailscale
+        ExecStart=/bin/touch /var/lib/%N.stamp
+        ExecStart=/bin/systemctl enable --now tailscaled.service
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: tailscale-auth.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Authenticate Tailscale
+        Wants=network-online.target
+        After=network-online.target
+        After=rpm-ostree-install-tailscale.service
+        After=tailscaled.service
+        Wants=tailscaled.service
+        ConditionPathExists=/etc/tailscale/authkey
+        ConditionPathExists=!/var/lib/%N.stamp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStartPre=/bin/bash -c 'until [ -S /var/run/tailscale/tailscaled.sock ]; do sleep 2; done'
+        ExecStart=/usr/bin/tailscale up --authkey=file:/etc/tailscale/authkey --hostname=winserv --ssh
+        ExecStart=/bin/touch /var/lib/%N.stamp
+        ExecStartPost=/bin/rm -f /etc/tailscale/authkey
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: tailscale-funnel-jellyfin.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Tailscale Funnel for Jellyfin
+        After=tailscale-auth.service
+        After=tailscaled.service
+        Wants=tailscaled.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStartPre=/bin/bash -c 'until /usr/bin/tailscale status --json | grep -q "Online.*true"; do sleep 2; done'
+        ExecStart=/usr/bin/tailscale funnel --bg 8096
+
+        [Install]
+        WantedBy=multi-user.target

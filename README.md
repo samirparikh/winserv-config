@@ -190,10 +190,58 @@ sudo -u jellyfin podman auto-update --dry-run
 ### Duplicate machine names in Tailscale
 After reinstalling, you may see both `winserv` (offline) and `winserv-1` in your tailnet. Delete the old entry from the [Tailscale admin console](https://login.tailscale.com/admin/machines) and optionally rename the new one.
 
-## Files
+## Project Structure
+
+The butane configuration is now modularized for easier maintenance:
+
+```
+fcos/
+├── butane/
+│   ├── base.bu              # Variant and version
+│   ├── network.bu           # Hostname and static IP configuration
+│   ├── users.bu             # User accounts (core, jellyfin)
+│   ├── storage.bu           # Mount points and storage permissions
+│   ├── tailscale.bu         # Tailscale installation and configuration
+│   ├── containers/
+│   │   ├── jellyfin.bu      # Jellyfin container and services
+│   │   ├── adguardhome.bu   # AdGuard Home container and services
+│   │   └── homepage.bu      # Homepage dashboard with YAML configs
+│   └── misc.bu              # Miscellaneous configs (bash_profile, etc.)
+├── build.sh                 # Script to merge modular butane files
+└── homelab.bu               # Generated combined butane file
+```
 
 | File | Purpose |
 |------|---------|
-| `winserv.bu` | Butane configuration (human-readable) |
-| `install.sh` | Installation script that renders the config and runs coreos-installer |
+| `fcos/butane/*.bu` | Modular butane configuration files (human-readable) |
+| `fcos/build.sh` | Builds homelab.bu from modular butane files |
+| `fcos/homelab.bu` | Generated combined butane file (created by build.sh) |
+| `fcos/homelab.ign` | Generated ignition file (created by install.sh) |
+| `install.sh` | Installation script that builds config and runs coreos-installer |
 | `tailscale_keyfile` | Your Tailscale auth key (not committed to repo) |
+| `winserv.bu` | Legacy monolithic butane file (kept for reference) |
+
+## Making Changes
+
+To modify the configuration:
+
+1. Edit the relevant file in `fcos/butane/` or `fcos/butane/containers/`
+2. Run `./install.sh` when ready to install
+
+The `install.sh` script automatically runs `build.sh` to merge all modular files before installation.
+
+### Testing Changes Without Installing
+
+If you want to preview the generated configuration without installing:
+
+```bash
+fcos/build.sh           # Generate homelab.bu from modular files
+cat fcos/homelab.bu     # Review the merged configuration
+```
+
+This is useful for:
+- Verifying your modular changes merge correctly
+- Reviewing the complete configuration before committing to installation
+- Debugging configuration issues
+
+You do **not** need to run `build.sh` manually before running `install.sh` - it's called automatically.

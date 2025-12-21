@@ -1,0 +1,13 @@
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICJkPnoiDN0YMNlP//5kjLStlNyqU305GrG/PJGyI6wh siparikh@gmail.com
+      password_hash: $y$j9T$SJtncZAjzZEIZ872/KmO20$u5gQgmu5oqX1pXoHuBuW0wJ.LCJNyn5SGAER/TJEuq7
+    - name: jellyfin
+      uid: 1001
+storage:
+  files:
+    # Enable lingering for jellyfin user
+    - path: /var/lib/systemd/linger/jellyfin
+      mode: 0644

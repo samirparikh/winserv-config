@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-BUTANE_FILE="winserv.bu"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUTANE_FILE="${SCRIPT_DIR}/fcos/homelab.bu"
+IGNITION_FILE="${SCRIPT_DIR}/fcos/homelab.ign"
 TARGET_DISK="/dev/nvme0n1"
 KEY_URL="http://192.168.1.227:8000"
 KEY_FILE="tailscale_keyfile"
@@ -36,9 +38,13 @@ confirm() {
 
 log "Running pre-flight checks"
 
-# 1. Verify Butane file exists
-log "Checking Butane file exists: ${BUTANE_FILE}"
-[[ -f "$BUTANE_FILE" ]] || error "Butane file not found: ${BUTANE_FILE}"
+# 1. Verify build script exists
+log "Checking build script exists"
+if [[ -f "${SCRIPT_DIR}/fcos/build.sh" ]]; then
+  BUILD_SCRIPT="${SCRIPT_DIR}/fcos/build.sh"
+else
+  error "Build script not found: ${SCRIPT_DIR}/fcos/build.sh"
+fi
 
 # 2. Verify target disk exists
 log "Checking target disk exists: ${TARGET_DISK}"
@@ -54,6 +60,10 @@ fi
 # Execution steps
 ########################################
 
+# Step 0: Build butane file from modules
+log "Building butane file from modular sources"
+"${BUILD_SCRIPT}"
+
 # Step 1: Download Tailscale auth key file
 log "Downloading Tailscale auth key file"
 curl -v -O "${KEY_URL}/${KEY_FILE}"
@@ -64,9 +74,9 @@ export TAILSCALE_AUTHKEY
 TAILSCALE_AUTHKEY="$(cat "${KEY_FILE}")"
 
 # Step 3: Render Butane configuration
-log "Rendering Butane configuration"
+log "Rendering Butane configuration with Tailscale key"
 sed "s/__TAILSCALE_AUTHKEY__/${TAILSCALE_AUTHKEY}/" \
-  "$BUTANE_FILE" > /tmp/winserv.bu
+  "$BUTANE_FILE" > /tmp/homelab.bu
 
 # Step 4: Pull Butane container image
 log "Pulling Butane container image"
@@ -75,7 +85,7 @@ podman pull quay.io/coreos/butane:release
 # Step 5: Generate Ignition file
 log "Generating Ignition file"
 podman run --rm -i quay.io/coreos/butane:release --strict \
-  < /tmp/winserv.bu > /tmp/winserv.ign
+  < /tmp/homelab.bu > "${IGNITION_FILE}"
 
 # Step 6: Confirm before installing Fedora CoreOS
 if confirm "About to INSTALL Fedora CoreOS to ${TARGET_DISK}. THIS WILL ERASE THE DISK. Continue?"; then
@@ -83,7 +93,7 @@ if confirm "About to INSTALL Fedora CoreOS to ${TARGET_DISK}. THIS WILL ERASE TH
   sudo wipefs --all "${TARGET_DISK}"
 
   log "Running coreos-installer"
-  sudo coreos-installer install "${TARGET_DISK}" --ignition-file /tmp/winserv.ign
+  sudo coreos-installer install "${TARGET_DISK}" --ignition-file "${IGNITION_FILE}"
 else
   log "Installation aborted by user"
   exit 1
@@ -91,7 +101,7 @@ fi
 
 # Step 7: Cleanup
 log "Cleaning up temporary files"
-rm -f /tmp/winserv.ign
+rm -f /tmp/homelab.bu
 
 # Step 8: Confirm before reboot
 if confirm "Installation complete. Reboot now?"; then

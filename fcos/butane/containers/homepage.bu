@@ -1,0 +1,150 @@
+storage:
+  directories:
+    # Homepage directories (root-owned, not on btrfs subvolume)
+    - path: /var/srv/homepage
+      mode: 0755
+      user:
+        name: root
+      group:
+        name: root
+    - path: /var/srv/homepage/config
+      mode: 0755
+      user:
+        name: root
+      group:
+        name: root
+  files:
+    # Homepage container (rootful)
+    - path: /etc/containers/systemd/homepage.container
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Homepage Dashboard
+          After=network-online.target
+          Wants=network-online.target
+
+          [Container]
+          Image=ghcr.io/gethomepage/homepage:latest
+          ContainerName=homepage
+          AutoUpdate=registry
+          PublishPort=3001:3000
+          SecurityLabelDisable=true
+          Volume=/var/srv/homepage/config:/app/config:Z
+          Volume=/run/podman/podman.sock:/var/run/docker.sock
+          Volume=/run/user/1001/podman/podman.sock:/var/run/jellyfin-podman.sock
+          Environment=HOMEPAGE_ALLOWED_HOSTS=winserv:3001,winserv,192.168.1.229,winserv.terrier-duck.ts.net:3001,winserv.terrier-duck.ts.net
+
+          [Service]
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target default.target
+    # Homepage configuration files
+    - path: /var/srv/homepage/config/settings.yaml
+      mode: 0644
+      contents:
+        inline: |
+          ---
+          title: Winserv Dashboard
+          theme: dark
+          color: slate
+          headerStyle: boxed
+          target: _blank
+          layout:
+            Media:
+              style: row
+              columns: 2
+            Services:
+              style: row
+              columns: 2
+    - path: /var/srv/homepage/config/services.yaml
+      mode: 0644
+      contents:
+        inline: |
+          ---
+          - Media:
+              - Jellyfin:
+                  icon: jellyfin.png
+                  href: http://192.168.1.229:8096
+                  description: Media Server
+                  container: jellyfin
+                  server: jellyfin-podman
+                  widget:
+                    type: jellyfin
+                    url: http://192.168.1.229:8096
+                    key: {{HOMEPAGE_VAR_JELLYFIN_API_KEY}}
+                    enableBlocks: true
+                    enableNowPlaying: true
+
+          - Services:
+              - AdGuard Home:
+                  icon: adguard-home.png
+                  href: http://192.168.1.229
+                  description: DNS & Ad Blocking
+                  container: adguardhome
+                  server: docker
+                  widget:
+                    type: adguard
+                    url: http://192.168.1.229
+                    username: {{HOMEPAGE_VAR_ADGUARD_USERNAME}}
+                    password: {{HOMEPAGE_VAR_ADGUARD_PASSWORD}}
+    - path: /var/srv/homepage/config/widgets.yaml
+      mode: 0644
+      contents:
+        inline: |
+          ---
+          - resources:
+              cpu: true
+              memory: true
+              disk: /
+              expanded: true
+          - search:
+              provider: duckduckgo
+              target: _blank
+    - path: /var/srv/homepage/config/bookmarks.yaml
+      mode: 0644
+      contents:
+        inline: |
+          ---
+          - Network:
+              - Router:
+                  - icon: router.png
+                    href: http://192.168.1.1
+              - Tailscale:
+                  - icon: tailscale.png
+                    href: https://login.tailscale.com/admin/machines
+    - path: /var/srv/homepage/config/docker.yaml
+      mode: 0644
+      contents:
+        inline: |
+          ---
+          docker:
+            host: /var/run/docker.sock
+          jellyfin-podman:
+            host: /var/run/jellyfin-podman.sock
+  links:
+    # Rootful podman auto-update timer (system-level)
+    - path: /etc/systemd/system/timers.target.wants/podman-auto-update.timer
+      target: /usr/lib/systemd/system/podman-auto-update.timer
+    # Enable podman socket for Homepage container integration
+    - path: /etc/systemd/system/sockets.target.wants/podman.socket
+      target: /usr/lib/systemd/system/podman.socket
+systemd:
+  units:
+    - name: homepage-firewall.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Open Homepage firewall port
+        After=firewalld.service
+        Requires=firewalld.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=3001/tcp
+        ExecStart=/usr/bin/firewall-cmd --reload
+
+        [Install]
+        WantedBy=multi-user.target

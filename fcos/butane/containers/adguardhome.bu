@@ -1,0 +1,108 @@
+storage:
+  files:
+    # Disable systemd-resolved stub listener to free port 53 for AdGuard Home
+    - path: /etc/systemd/resolved.conf.d/disable-stub.conf
+      mode: 0644
+      contents:
+        inline: |
+          [Resolve]
+          DNSStubListener=no
+    # AdGuard Home container (rootful)
+    - path: /etc/containers/systemd/adguardhome.container
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=AdGuard Home
+          After=network-online.target
+          After=disable-resolved-stub.service
+          After=adguardhome-dirs.service
+          Wants=network-online.target
+          Requires=disable-resolved-stub.service
+          Requires=adguardhome-dirs.service
+
+          [Container]
+          Image=docker.io/adguard/adguardhome
+          ContainerName=adguardhome
+          AutoUpdate=registry
+          PublishPort=53:53/tcp
+          PublishPort=53:53/udp
+          PublishPort=80:80/tcp
+          PublishPort=3000:3000/tcp
+          PublishPort=853:853/tcp
+          PublishPort=784:784/udp
+          PublishPort=853:853/udp
+          PublishPort=8853:8853/udp
+          PublishPort=5443:5443/tcp
+          PublishPort=5443:5443/udp
+          Volume=/var/srv/adguardhome/work:/opt/adguardhome/work:Z
+          Volume=/var/srv/adguardhome/conf:/opt/adguardhome/conf:Z
+
+          [Service]
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+systemd:
+  units:
+    - name: adguardhome-dirs.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Create AdGuard Home directories on storage
+        After=var-srv-adguardhome.mount
+        Requires=var-srv-adguardhome.mount
+        Before=adguardhome.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir -p /var/srv/adguardhome/conf
+        ExecStart=/usr/bin/mkdir -p /var/srv/adguardhome/work
+        ExecStart=/usr/bin/chmod 755 /var/srv/adguardhome/conf
+        ExecStart=/usr/bin/chmod 700 /var/srv/adguardhome/work
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: adguardhome-firewall.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Open AdGuard Home firewall ports
+        After=firewalld.service
+        Requires=firewalld.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=53/tcp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=53/udp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=80/tcp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=3000/tcp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=853/tcp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=784/udp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=853/udp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=8853/udp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=5443/tcp
+        ExecStart=/usr/bin/firewall-cmd --permanent --add-port=5443/udp
+        ExecStart=/usr/bin/firewall-cmd --reload
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: disable-resolved-stub.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Disable systemd-resolved stub listener for AdGuard Home
+        After=systemd-resolved.service
+        Before=adguardhome.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/systemctl restart systemd-resolved
+
+        [Install]
+        WantedBy=multi-user.target

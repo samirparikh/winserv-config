@@ -1,0 +1,21 @@
+storage:
+  files:
+    # Core user bash profile
+    - path: /var/home/core/.bash_profile
+      mode: 0644
+      overwrite: true
+      user:
+        name: core
+      group:
+        name: core
+      contents:
+        inline: |
+          # Source bashrc if it exists
+          if [ -f ~/.bashrc ]; then
+            . ~/.bashrc
+          fi
+
+          # Set console blanking and powerdown
+          if [[ -t 1 && $(tty) == /dev/tty* ]]; then
+            setterm --blank 10 --powerdown 10
+          fi
